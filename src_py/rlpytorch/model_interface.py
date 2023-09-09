@@ -129,7 +129,7 @@ class ModelInterface(object):
             None if model is successfully added.
         '''
         if key in self.models:
-            raise("ModelInterface: key[%s] is already present!" % key)
+            raise f"ModelInterface: key[{key}] is already present!"
 
         # New model.
         if gpu_id is not None and gpu_id >= 0:
@@ -174,8 +174,8 @@ class ModelInterface(object):
                     weight_decay=params["weight_decay"])
             else:
                 raise ValueError(
-                    "Optimization method %s is not supported! " %
-                    params["opt_method"])
+                    f'Optimization method {params["opt_method"]} is not supported! '
+                )
 
         return True
 

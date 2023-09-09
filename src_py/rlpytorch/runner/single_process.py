@@ -87,8 +87,8 @@ class SingleProcessRun(object):
                 # counter, then the set value will not be added by 1.
                 self.GC.run()
                 self.episode_counter += 1
-                diff = self.episode_counter - old_counter
                 if tq is not None:
+                    diff = self.episode_counter - old_counter
                     if diff < 0:
                         print(f'Diff negative: {old_counter} -> '
                               f'{self.episode_counter}')

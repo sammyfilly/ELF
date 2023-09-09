@@ -59,11 +59,11 @@ class Allocator(object):
     @staticmethod
     def spec2batches(ctx, batchsize, spec, gpu, use_numpy=False, num_recv=1):
         batch_spec = []
-        name2idx = defaultdict(lambda: list())
-        idx2name = dict()
+        name2idx = defaultdict(lambda: [])
+        idx2name = {}
 
         for name, v in spec.items():
-            print("%s: %s" % (name, v))
+            print(f"{name}: {v}")
             # TODO this might not good since it changes the input.
             if "input" not in v or v["input"] is None:
                 v["input"] = []
@@ -150,14 +150,11 @@ class Batch:
         '''
         if key in self.batch:
             return self.batch[key]
+        key_with_last = f"last_{key}"
+        if key_with_last in self.batch:
+            return self.batch[key_with_last][1:]
         else:
-            key_with_last = "last_" + key
-            if key_with_last in self.batch:
-                return self.batch[key_with_last][1:]
-            else:
-                raise KeyError(
-                    "Batch(): specified key: %s or %s not found!" %
-                    (key, key_with_last))
+            raise KeyError(f"Batch(): specified key: {key} or {key_with_last} not found!")
 
     def add(self, key, value):
         '''Add key=value in Batch.
@@ -170,7 +167,7 @@ class Batch:
         return self
 
     def __contains__(self, key):
-        return key in self.batch or "last_" + key in self.batch
+        return key in self.batch or f"last_{key}" in self.batch
 
     def setzero(self):
         ''' Set all tensors in the batch to 0 '''
@@ -228,15 +225,14 @@ class Batch:
         if self.histdim is None:
             raise ValueError("No histdim information for the batch")
 
-        if key is None:
-            new_batch = self.empty_copy()
-            new_batch.batch = {
-                k: tensor_slice(v, self.histdim, hist_idx)
-                for k, v in self.batch.items()
-            }
-            return new_batch
-        else:
+        if key is not None:
             return tensor_slice(self[key], self.histdim, hist_idx)
+        new_batch = self.empty_copy()
+        new_batch.batch = {
+            k: tensor_slice(v, self.histdim, hist_idx)
+            for k, v in self.batch.items()
+        }
+        return new_batch
 
     def half(self):
         '''transfer batch data to fp16'''
@@ -349,9 +345,9 @@ class GCWrapper:
               ``cb(input_batch, input_batch_gpu, reply_batch)``.
         '''
         if key not in self.name2idx:
-            raise ValueError("Callback[%s] is not in the specification" % key)
+            raise ValueError(f"Callback[{key}] is not in the specification")
         if cb is None:
-            print("Warning: Callback[%s] is registered to None" % key)
+            print(f"Warning: Callback[{key}] is registered to None")
 
         for idx in self.name2idx[key]:
             # print("Register " + str(cb) + " at idx: %d" % idx)
@@ -405,13 +401,9 @@ class GCWrapper:
                 keys_extra, keys_missing = sel_reply.copy_from(reply)
 
             if len(keys_extra) > 0:
-                raise ValueError(
-                    "Receive extra keys %s from reply!" %
-                    str(keys_extra))
+                raise ValueError(f"Receive extra keys {str(keys_extra)} from reply!")
             if len(keys_missing) > 0:
-                raise ValueError(
-                    "Missing keys %s absent in reply!" %
-                    str(keys_missing))
+                raise ValueError(f"Missing keys {str(keys_missing)} absent in reply!")
 
     def _check_callbacks(self):
         # Check whether all callbacks are assigned properly.

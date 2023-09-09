@@ -94,7 +94,7 @@ class MultiProcessRun(object):
             else:
                 iterator = range(self.options.num_minibatch)
 
-            for i in iterator:
+            for _ in iterator:
                 self.GC.run()
 
             if self.episode_summary is not None:

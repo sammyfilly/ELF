@@ -165,8 +165,8 @@ class PolicyGradient(object):
             entropy_err = add_err(entropy_err, errs["entropy_err"])
             log_pi_s.append(errs["logpi"])
 
-            stats["nll_" + pi_node].feed(errs["policy_err"].data[0])
-            stats["entropy_" + pi_node].feed(errs["entropy_err"].data[0])
+            stats[f"nll_{pi_node}"].feed(errs["policy_err"].data[0])
+            stats[f"entropy_{pi_node}"].feed(errs["entropy_err"].data[0])
 
         for log_pi in log_pi_s:
             self._reg_backward(log_pi, Variable(pg_weights))

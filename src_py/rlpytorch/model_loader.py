@@ -229,7 +229,7 @@ def load_env(
             model_file.Models[envs["model"]]
 
     overrides = dict(overrides) if overrides else {}
-    overrides.update(getattr(model_file, "Overrides", {}))
+    overrides |= getattr(model_file, "Overrides", {})
 
     option_spec = PyOptionSpec()
     option_spec.merge(PyOptionSpec.fromClasses((

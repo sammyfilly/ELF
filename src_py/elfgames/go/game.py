@@ -400,8 +400,7 @@ class Loader(object):
                 input=["black_ver", "white_ver"],
                 reply=None
             )
-        elif self.options.mode == "train" or \
-                self.options.mode == "offline_train":
+        elif self.options.mode in ["train", "offline_train"]:
             desc["train"] = dict(
                 input=["s", "offline_a", "winner", "mcts_scores", "move_idx",
                        "selfplay_ver"],
@@ -413,7 +412,7 @@ class Loader(object):
                 batchsize=1
             )
         else:
-            raise "No such mode: " + self.options.mode
+            raise f"No such mode: {self.options.mode}"
 
         params.update(dict(
             num_group=1 if self.options.actor_only else 2,

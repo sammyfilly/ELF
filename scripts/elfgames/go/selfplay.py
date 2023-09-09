@@ -72,10 +72,10 @@ def reload_model(model_loader, params, mi, actor_name, args):
 def reload(mi, model_loader, params, args, root, ver, actor_name):
     if model_loader.options.load is None or model_loader.options.load == "":
         print('No previous model loaded, loading from', root)
-        real_path = os.path.join(root, "save-" + str(ver) + ".bin")
+        real_path = os.path.join(root, f"save-{str(ver)}.bin")
     else:
         this_root = os.path.dirname(model_loader.options.load)
-        real_path = os.path.join(this_root, "save-" + str(ver) + ".bin")
+        real_path = os.path.join(this_root, f"save-{str(ver)}.bin")
 
     if model_loader.options.load != real_path:
         model_loader.options.load = real_path
@@ -93,18 +93,23 @@ def main():
     # Set game to online model.
     actors = ["actor_black", "actor_white"]
     additional_to_load = {
-        ("eval_" + actor_name): (
-            Evaluator.get_option_spec(name="eval_" + actor_name),
+        f"eval_{actor_name}": (
+            Evaluator.get_option_spec(name=f"eval_{actor_name}"),
             lambda object_map, actor_name=actor_name: Evaluator(
-                object_map, name="eval_" + actor_name,
-                actor_name=actor_name, stats=None)
+                object_map,
+                name=f"eval_{actor_name}",
+                actor_name=actor_name,
+                stats=None,
+            ),
         )
         for i, actor_name in enumerate(actors)
     }
-    additional_to_load.update({
-        ("mi_" + name): (ModelInterface.get_option_spec(), ModelInterface)
-        for name in actors
-    })
+    additional_to_load.update(
+        {
+            f"mi_{name}": (ModelInterface.get_option_spec(), ModelInterface)
+            for name in actors
+        }
+    )
 
     env = load_env(
         os.environ, num_models=2, overrides={'actor_only': True},
@@ -117,10 +122,10 @@ def main():
     for i in range(len(actors)):
         actor_name = actors[i]
         stat = stats[i]
-        e = env["eval_" + actor_name]
+        e = env[f"eval_{actor_name}"]
 
         print(f'register {actor_name} for e = {e!s}')
-        e.setup(sampler=env["sampler"], mi=env["mi_" + actor_name])
+        e.setup(sampler=env["sampler"], mi=env[f"mi_{actor_name}"])
 
         def actor(batch, e, stat):
             reply = e.actor(batch)
@@ -147,8 +152,14 @@ def main():
                 while True:
                     try:
                         reload(
-                            env["mi_" + actor_name], model_loader, GC.params,
-                            args, root, ver, actor_name)
+                            env[f"mi_{actor_name}"],
+                            model_loader,
+                            GC.params,
+                            args,
+                            root,
+                            ver,
+                            actor_name,
+                        )
                         break
                     except BaseException:
                         import traceback
@@ -182,15 +193,20 @@ def main():
 
             # Force them to reload in the future.
             for model_loader, actor_name in zip(env["model_loaders"], actors):
-                reload_model(model_loader, GC.params,
-                             env["mi_" + actor_name], actor_name, args)
+                reload_model(
+                    model_loader,
+                    GC.params,
+                    env[f"mi_{actor_name}"],
+                    actor_name,
+                    args,
+                )
 
         # We just use one thread to do selfplay.
         GC.GC.getClient().setRequest(
             int(black), int(white), env['game'].options.resign_thres, 1)
 
     for actor_name in actors:
-        env["eval_" + actor_name].episode_start(0)
+        env[f"eval_{actor_name}"].episode_start(0)
 
     while not loop_end:
         GC.run()

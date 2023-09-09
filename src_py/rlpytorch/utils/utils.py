@@ -158,12 +158,8 @@ class DelayedStats:
     def reset(self):
         # self.entries[key][t_id] -> value
         self.entries = defaultdict(dict)
-        self.predicted_entries = [
-            defaultdict(dict) for i in range(
-                self.max_delay)]
-        self.baseline_entries = [
-            defaultdict(dict) for i in range(
-                self.max_delay)]
+        self.predicted_entries = [defaultdict(dict) for _ in range(self.max_delay)]
+        self.baseline_entries = [defaultdict(dict) for _ in range(self.max_delay)]
 
     def feed(self, ts, ids, curr, pred_diff, curr_cb=None, diff_cb=None):
         """Check keys in curr and pred, if there is any key starts with 'fa_',
@@ -181,10 +177,12 @@ class DelayedStats:
 
             key = k[len(self.prefix):]
             history = self.entries[key]
-            history.update({
-                str(t) + "_" + str(d): (v[i] if not curr_cb else curr_cb(v[i]))
-                for i, (t, d) in enumerate(zip(ts, ids))
-            })
+            history.update(
+                {
+                    f"{str(t)}_{str(d)}": v[i] if not curr_cb else curr_cb(v[i])
+                    for i, (t, d) in enumerate(zip(ts, ids))
+                }
+            )
 
         for k, v in pred_diff.items():
             if not k.startswith(self.prefix):
@@ -199,26 +197,32 @@ class DelayedStats:
 
             # Save it
             history = self.predicted_entries[delay][key]
-            history.update({
-                str(t + delay) + "_" + str(d): (
-                    self.entries[key][str(t) + "_" + str(d)] +
-                    (v[i] if not diff_cb else diff_cb(v[i]))
-                ) for i, (t, d) in enumerate(zip(ts, ids))
-            })
+            history.update(
+                {
+                    f"{str(t + delay)}_{str(d)}": (
+                        self.entries[key][f"{str(t)}_{str(d)}"]
+                        + (v[i] if not diff_cb else diff_cb(v[i]))
+                    )
+                    for i, (t, d) in enumerate(zip(ts, ids))
+                }
+            )
 
             history2 = self.baseline_entries[delay][key]
-            history2.update({
-                str(t + delay) + "_" + str(d):
-                self.entries[key][str(t) + "_" + str(d)]
-                for t, d in zip(ts, ids)
-            })
+            history2.update(
+                {
+                    f"{str(t + delay)}_{str(d)}": self.entries[key][
+                        f"{str(t)}_{str(d)}"
+                    ]
+                    for t, d in zip(ts, ids)
+                }
+            )
 
     def _compare_history(self, h1, h2):
         summation = 0
         counter = 0
         # h1[t_id] -> val
         for t_id, v1 in h1.items():
-            if not (t_id in h2):
+            if t_id not in h2:
                 continue
             v2 = h2[t_id]
             summation += (v1 - v2) ** 2
@@ -245,20 +249,20 @@ def print_dict(prompt, d, func=str, tight=False):
     print(prompt, end='')
     if not tight:
         print("")
-    print(dem.join(["%s: %s" % (k, func(d[k])) for k in sorted(d.keys())]))
+    print(dem.join([f"{k}: {func(d[k])}" for k in sorted(d.keys())]))
     if not tight:
         print("")
 
 
-def print_dict2(prompt, d1, d2, func=lambda x, y: str(x) + "_" + str(y)):
+def print_dict2(prompt, d1, d2, func=lambda x, y: f"{str(x)}_{str(y)}"):
     print(prompt)
     items = []
     for k in sorted(d1.keys()):
-        if not (k in d2):
+        if k not in d2:
             continue
         v1 = d1[k]
         v2 = d2[k]
-        items.append("%s: %s" % (k, func(v1, v2)))
+        items.append(f"{k}: {func(v1, v2)}")
 
     print("\n".join(items))
     print("")
@@ -336,26 +340,32 @@ class ForwardTracker:
                     self.sum_sqr_err_bl[k][2 * delay] += (p - v) ** 2
                     self.sum_sqr_err_bl[k][2 * delay + 1] += 1
 
-                additional_info[k + "_pred"] = ", ".join([
-                    "[%d] %.2f" % (delay, p)
-                    for delay, p in enumerate(cp["pred"]) if delay != 0
-                ])
-                additional_info[k + "_bl"] = ", ".join([
-                    "[%d] %.2f" % (delay, p)
-                    for delay, p in enumerate(cp["baseline"]) if delay != 0
-                ])
+                additional_info[f"{k}_pred"] = ", ".join(
+                    [
+                        "[%d] %.2f" % (delay, p)
+                        for delay, p in enumerate(cp["pred"])
+                        if delay != 0
+                    ]
+                )
+                additional_info[f"{k}_bl"] = ", ".join(
+                    [
+                        "[%d] %.2f" % (delay, p)
+                        for delay, p in enumerate(cp["baseline"])
+                        if delay != 0
+                    ]
+                )
                 del pred[t0]
 
             for t in range(1, self.max_delay):
-                k_f = k + "_T" + str(t)
-                if not (k_f in fd_info):
+                k_f = f"{k}_T{str(t)}"
+                if k_f not in fd_info:
                     continue
                 predictions = pred[t0 + t]
                 predictions["pred"][t] = fd_info[k_f] + v
                 predictions["baseline"][t] = v
                 used_fd_info[k][t] = fd_info[k_f]
 
-        batch_info.update(additional_info)
+        batch_info |= additional_info
         used_fd_info = {
             k: ", ".join([
                 "[%d] %.2f" % (i, vv) for i, vv in enumerate(v) if i != 0
@@ -407,18 +417,20 @@ class SeqStats:
 
     def feed(self, seqs):
         for seq_num in seqs:
-            bin_idx = None
-            for i, limit in enumerate(self.limits[1:]):
-                if int(seq_num) < limit:
-                    bin_idx = i
-                    break
+            bin_idx = next(
+                (
+                    i
+                    for i, limit in enumerate(self.limits[1:])
+                    if int(seq_num) < limit
+                ),
+                None,
+            )
             if seq_num > self.max_seq:
                 self.max_seq = seq_num
             if seq_num < self.min_seq:
                 self.min_seq = seq_num
 
-            name = "[" + str(self.limits[bin_idx]) + ", " + \
-                str(self.limits[bin_idx + 1]) + ")"
+            name = f"[{str(self.limits[bin_idx])}, {str(self.limits[bin_idx + 1])})"
             self.stats_seq[name] += 1
 
     def print_stats(self, reset=False):
@@ -427,13 +439,13 @@ class SeqStats:
             print(
                 "Distribution of %s [min = %d / max = %d / #count = %d]:" %
                 (self.name, self.min_seq, self.max_seq, total_counts))
-            s = ""
-            for r in sorted(self.stats_seq.keys(),
-                            key=lambda x: float(x.split(",")[0][1:])):
-                s += "%s: %d [%.2lf%%]\n" % (
-                    r,
-                    self.stats_seq[r],
-                    100.0 * self.stats_seq[r] / total_counts)
+            s = "".join(
+                "%s: %d [%.2lf%%]\n"
+                % (r, self.stats_seq[r], 100.0 * self.stats_seq[r] / total_counts)
+                for r in sorted(
+                    self.stats_seq.keys(), key=lambda x: float(x.split(",")[0][1:])
+                )
+            )
             print(s)
         else:
             print(
@@ -468,15 +480,12 @@ def npimgs2cudatensor(imgs):
 def print_binary(m):
     # Print a binary matrix.
     if len(m.size()) != 2:
-        print("Err! cannot print matrix of size " + str(m.size()))
+        print(f"Err! cannot print matrix of size {str(m.size())}")
         return
     s = ""
     for i in range(m.size(0)):
         for j in range(m.size(2)):
-            if m[i, j] != 0:
-                s += "x"
-            else:
-                s += "."
+            s += "x" if m[i, j] != 0 else "."
         s += "\n"
     print(s)
 

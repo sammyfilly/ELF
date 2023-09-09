@@ -50,10 +50,7 @@ class Evaluator(object):
         """Initialization for Evaluator."""
         import_options(self, option_map, self.get_option_spec(name))
 
-        if stats:
-            self.stats = Stats(option_map, name)
-        else:
-            self.stats = None
+        self.stats = Stats(option_map, name) if stats else None
         if self.stats is not None and not self.stats.is_valid():
             self.stats = None
 
@@ -89,7 +86,7 @@ class Evaluator(object):
                 signatured by step
         """
         if self.verbose:
-            print("In Evaluator[%s]::actor" % self.name)
+            print(f"In Evaluator[{self.name}]::actor")
 
         # actor model.
         m = self.mi[self.actor_name]

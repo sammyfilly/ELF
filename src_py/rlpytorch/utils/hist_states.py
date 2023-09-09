@@ -15,8 +15,8 @@ class HistState:
 
     def preprocess(self, ids, seqs):
         for id, seq in zip(ids, seqs):
-            q = self.hs[id]
             if seq == 0:
+                q = self.hs[id]
                 # clear the queue (which might contain old states of the last
                 # game)
                 q.clear()

@@ -67,10 +67,7 @@ class Model(nn.Module):
         Returns:
             Variable for x
         '''
-        if not isinstance(x, Variable):
-            return Variable(x, volatile=self.volatile)
-        else:
-            return x
+        return x if isinstance(x, Variable) else Variable(x, volatile=self.volatile)
 
     def before_update(self):
         """Customized operations for each model before update.
@@ -98,7 +95,7 @@ class Model(nn.Module):
             'step': self.step,
             'options': vars(self.options),
         }
-        for i in range(num_trial):
+        for _ in range(num_trial):
             try:
                 torch.save(content, filename)
                 return
@@ -127,8 +124,8 @@ class Model(nn.Module):
             self.load_state_dict(data)
         else:
             for k in omit_keys:
-                del data["state_dict"][k + ".weight"]
-                del data["state_dict"][k + ".bias"]
+                del data["state_dict"][f"{k}.weight"]
+                del data["state_dict"][f"{k}.bias"]
 
             sd = data["state_dict"]
 
@@ -156,7 +153,7 @@ class Model(nn.Module):
             current_options = vars(self.options)
 
             for option_name in \
-                    (set(loaded_options.keys()) & set(current_options.keys())):
+                        (set(loaded_options.keys()) & set(current_options.keys())):
                 if loaded_options[option_name] != current_options[option_name]:
                     raise ValueError(
                         f'Discrepancy between current and loaded model '

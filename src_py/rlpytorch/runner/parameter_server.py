@@ -93,7 +93,7 @@ class ParameterServer(object):
             mi(`ModelInterface`): model interface to send
         """
         assert mi is not None
-        for i in range(self.n_processes - 1):
+        for _ in range(self.n_processes - 1):
             self.queue.put(mi)
         self._server_shared_mi = mi
 
@@ -157,10 +157,7 @@ class ParameterServer(object):
 
         # First wait until we are synced up.
         self.send_done.wait()
-        if not skip:
-            mi = self._client_shared_mi.clone(gpu=gpu)
-        else:
-            mi = None
+        mi = self._client_shared_mi.clone(gpu=gpu) if not skip else None
         self.recv_done.notify()
         return mi
 
