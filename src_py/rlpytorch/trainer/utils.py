@@ -29,9 +29,7 @@ class SymLink(object):
                     os.unlink(symlink_file)
                 os.symlink(name, symlink_file)
             except BaseException:
-                print(
-                    "Build symlink %s for %s failed, skipped" %
-                    (symlink_file, name))
+                print(f"Build symlink {symlink_file} for {name} failed, skipped")
 
 
 class ModelSaver(object):
@@ -79,9 +77,9 @@ class ModelSaver(object):
 
     def feed(self, model):
         basename = self.options.save_prefix + "-%d.bin" % model.step
-        print("Save to " + self.options.save_dir)
+        print(f"Save to {self.options.save_dir}")
         filename = os.path.join(self.options.save_dir, basename)
-        print("Filename = " + filename)
+        print(f"Filename = {filename}")
         model.save(filename)
         # Create a symlink
         self.symlinker.feed(basename)
@@ -106,16 +104,15 @@ class ValueStats(object):
     def summary(self, info=None):
         info = "" if info is None else info
         name = "" if self.name is None else self.name
-        if self.counter > 0:
-            try:
-                return "%s%s[%d]: avg: %.5f, min: %.5f[%d], max: %.5f[%d]" % (
-                    info, name, self.counter, self.summation / self.counter,
-                    self.min_value, self.min_idx, self.max_value, self.max_idx
-                )
-            except BaseException:
-                return "%s%s[Err]:" % (info, name)
-        else:
-            return "%s%s[0]" % (info, name)
+        if self.counter <= 0:
+            return f"{info}{name}[0]"
+        try:
+            return "%s%s[%d]: avg: %.5f, min: %.5f[%d], max: %.5f[%d]" % (
+                info, name, self.counter, self.summation / self.counter,
+                self.min_value, self.min_idx, self.max_value, self.max_idx
+            )
+        except BaseException:
+            return f"{info}{name}[Err]:"
 
     def reset(self):
         self.counter = 0
@@ -152,7 +149,7 @@ class MultiCounter(object):
 
     def inc(self, key):
         if self.verbose:
-            print("[MultiCounter]: %s" % key)
+            print(f"[MultiCounter]: {key}")
         self.counts[key] += 1
         self.total_count += 1
 
@@ -177,4 +174,4 @@ class MultiCounter(object):
 
         for k in sorted(self.stats.keys()):
             v = self.stats[k]
-            print(v.summary(info=str(global_counter) + ":" + k))
+            print(v.summary(info=f"{str(global_counter)}:{k}"))

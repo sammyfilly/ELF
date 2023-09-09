@@ -15,9 +15,6 @@ class ZMQCtx:
         pass
 
     def __exit__(self, ty, value, tb):
-        if value is not None:
-            # print(value)
-            pass
         return True
         # print("Send failed for " + self.identity + "..")
 

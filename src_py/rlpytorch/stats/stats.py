@@ -29,7 +29,7 @@ class EvalCount(object):
     def reset_on_new_model(self):
         self.reset()
         self.ids_exclude.update(self.ids.keys())
-        self.ids = dict()
+        self.ids = {}
 
     def feed(self, id, *args, **kwargs):
         # Game is running, not reaching terminal yet.
@@ -70,7 +70,7 @@ class EvalCount(object):
     def print_summary(self):
         summary = self.summary()
         for k, v in summary.items():
-            print("%s: %s" % (str(k), str(v)))
+            print(f"{str(k)}: {str(v)}")
 
     def feed_batch(self, batch, hist_idx=0):
         ids = batch["id"][hist_idx]
@@ -179,16 +179,17 @@ class Stats(EvalCount):
     def get_option_spec(cls, stats_name=''):
         spec = PyOptionSpec()
         spec.addStrOption(
-            stats_name + '_stats',
+            f'{stats_name}_stats',
             'type of stat to report (rewards or winrate)',
-            '')
+            '',
+        )
         return spec
 
     def __init__(self, option_map, stats_name=''):
         """Initialization for Stats."""
         import_options(self, option_map, self.get_option_spec(stats_name))
 
-        self.name = stats_name + "_stats"
+        self.name = f"{stats_name}_stats"
         self.collector = None
 
         self.stats_name = getattr(self.options, self.name)
@@ -198,7 +199,7 @@ class Stats(EvalCount):
             self.collector = WinRate()
         else:
             self.collector = None
-            print("Stats: Name " + str(self.stats_name) + " is not known!")
+            print(f"Stats: Name {str(self.stats_name)} is not known!")
             # raise ValueError(
             #     "Name " + str(self.stats_name) + " is not known!")
 

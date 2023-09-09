@@ -187,23 +187,18 @@ class Loader(object):
             print("Mode: ", opt.mode)
             print("Num Actions: ", params["num_action"])
 
-        desc = {}
-        if self.options.mode == "online":
-            desc["human_actor"] = dict(
-                input=["s"],
-                reply=["pi", "a", "V"],
-                batchsize=1,
-            )
-            # Used for MCTS/Direct play.
-            desc["actor_black"] = dict(
+        if self.options.mode != "online":
+            raise f"No such mode: {self.options.mode}"
+
+        desc = {
+            "human_actor": dict(input=["s"], reply=["pi", "a", "V"], batchsize=1),
+            "actor_black": dict(
                 input=["s"],
                 reply=["pi", "V", "a", "rv"],
                 timeout_usec=10,
-                batchsize=co.mcts_options.num_rollouts_per_batch
-            )
-        else:
-            raise "No such mode: " + self.options.mode
-
+                batchsize=co.mcts_options.num_rollouts_per_batch,
+            ),
+        }
         params.update(dict(
             num_group=1 if self.options.actor_only else 2,
             T=self.options.T,

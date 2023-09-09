@@ -33,10 +33,7 @@ def plot_plane(v):
     s = ""
     for j in range(v.size(1)):
         for i in range(v.size(0)):
-            if v[i, v.size(1) - 1 - j] != 0:
-                s += "o "
-            else:
-                s += ". "
+            s += "o " if v[i, v.size(1) - 1 - j] != 0 else ". "
         s += "\n"
     print(s)
 
@@ -92,8 +89,7 @@ class GoConsole:
             self.check_stats[-1] += 1
 
     def actor(self, batch):
-        reply = self.evaluator.actor(batch)
-        return reply
+        return self.evaluator.actor(batch)
 
     def showboard(self, batch):
         print(batch.GC.getGame(0).showBoard())
@@ -107,7 +103,7 @@ class GoConsole:
                 return
             else:
                 n = sum(self.check_stats.values())
-                print("#Move: " + str(n))
+                print(f"#Move: {str(n)}")
                 accu = 0
                 for i in range(5):
                     accu += self.check_stats[i]
@@ -130,15 +126,29 @@ class GoConsole:
             reply = dict(pi=None, a=None, V=0)
 
             try:
-                if c == 'p':
+                if c == 'c':
+                    return self.evaluator.actor(batch)
+                elif c == 'check2end':
+                    self.check_stats = Counter()
+                    self.check(batch)
+                    self.last_move_idx = batch["move_idx"][0][0]
+                    if len(items) == 2:
+                        self.repeat = int(items[1])
+                        self.repeat_cmd = "check2end_cont"
+                    return
+
+                elif c == 'offline_a':
+                    if "offline_a" in batch:
+                        for i, offline_a in \
+                                    enumerate(batch["offline_a"][0][0]):
+                            print(
+                                "[%d]: %s" %
+                                (i, self.action2move(offline_a)))
+                    else:
+                        print("No offline_a available!")
+                elif c == 'p':
                     reply["a"] = self.move2action(items[1])
                     return reply
-                elif c == 'c':
-                    reply = self.evaluator.actor(batch)
-                    return reply
-                elif c == "s":
-                    channel_id = int(items[1])
-                    plot_plane(batch["s"][0][0][channel_id])
                 elif c == "a":
                     reply = self.evaluator.actor(batch)
                     if "pi" in reply:
@@ -150,17 +160,10 @@ class GoConsole:
                                   (self.action2move(indices[i]), score[i]))
                     else:
                         print("No key \"pi\"")
+                elif c == "aug":
+                    print(batch["aug_code"][0][0])
                 elif c == "check":
                     print("Top %d" % self.check(batch))
-
-                elif c == 'check2end':
-                    self.check_stats = Counter()
-                    self.check(batch)
-                    self.last_move_idx = batch["move_idx"][0][0]
-                    if len(items) == 2:
-                        self.repeat = int(items[1])
-                        self.repeat_cmd = "check2end_cont"
-                    return
 
                 elif c == "check2end_cont":
                     if not hasattr(self, "check_stats"):
@@ -169,29 +172,21 @@ class GoConsole:
                     self.last_move_idx = batch["move_idx"][0][0]
                     return
 
-                elif c == "aug":
-                    print(batch["aug_code"][0][0])
-                elif c == "show":
-                    self.showboard(batch)
                 elif c == "dbg":
                     import pdb
                     pdb.set_trace()
-                elif c == 'offline_a':
-                    if "offline_a" in batch:
-                        for i, offline_a in \
-                                enumerate(batch["offline_a"][0][0]):
-                            print(
-                                "[%d]: %s" %
-                                (i, self.action2move(offline_a)))
-                    else:
-                        print("No offline_a available!")
                 elif c == "exit":
                     self.exit = True
                     return reply
+                elif c == "s":
+                    channel_id = int(items[1])
+                    plot_plane(batch["s"][0][0][channel_id])
+                elif c == "show":
+                    self.showboard(batch)
                 else:
-                    print("Invalid input: " + cmd + ". Please try again")
+                    print(f"Invalid input: {cmd}. Please try again")
             except Exception as e:
-                print("Something wrong! " + str(e))
+                print(f"Something wrong! {str(e)}")
 
                 '''
                 elif c == "u":
@@ -232,11 +227,10 @@ class GoConsoleGTP:
 
     def on_genmove(self, batch, items, reply):
         ret, msg = self.check_player(batch, items[1][0])
-        if ret:
-            reply["a"] = self.actions["skip"]
-            return True, reply
-        else:
+        if not ret:
             return False, msg
+        reply["a"] = self.actions["skip"]
+        return True, reply
 
     def on_play(self, batch, items, reply):
         ret, msg = self.check_player(batch, items[1][0])
@@ -299,8 +293,7 @@ class GoConsoleGTP:
         return x * self.board_size + y
 
     def actor(self, batch):
-        reply = self.evaluator.actor(batch)
-        return reply
+        return self.evaluator.actor(batch)
 
     def action2move(self, a):
         x = a // self.board_size
@@ -321,23 +314,21 @@ class GoConsoleGTP:
 
     def check_player(self, batch, player):
         board_next_player = self.get_next_player(batch)
-        if player.lower() != board_next_player.lower():
-            return (
+        return (
+            (
                 False,
-                ("Specified next player %s is not the same as the "
-                 "next player %s on the board") % (
-                    player, board_next_player
-                )
+                f"Specified next player {player} is not the same as the next player {board_next_player} on the board",
             )
-        else:
-            return True, None
+            if player.lower() != board_next_player.lower()
+            else (True, None)
+        )
 
     def print_msg(self, ret, msg):
         print("\n%s %s\n\n" % (("=" if ret else "?"), msg))
 
     def prompt(self, prompt_str, batch):
         # Show last command results.
-        if self.last_cmd == "play" or self.last_cmd == "clear_board":
+        if self.last_cmd in ["play", "clear_board"]:
             self.print_msg(True, "")
         elif self.last_cmd == "genmove":
             self.print_msg(True, self.get_last_move(batch))
@@ -359,13 +350,12 @@ class GoConsoleGTP:
                 self.last_cmd = c
                 if not ret:
                     self.print_msg(False, msg)
+                elif isinstance(msg, dict):
+                    return msg
+                elif isinstance(msg, str):
+                    self.print_msg(True, msg)
                 else:
-                    if isinstance(msg, dict):
-                        return msg
-                    elif isinstance(msg, str):
-                        self.print_msg(True, msg)
-                    else:
-                        self.print_msg(True, "")
+                    self.print_msg(True, "")
 
             except Exception:
                 print(traceback.format_exc())

@@ -54,9 +54,9 @@ class Model_Policy(Model):
             conv_bn = (nn.BatchNorm2d(self.options.dim)
                        if self.options.bn
                        else lambda x: x)
-            setattr(self, "conv" + str(i), conv)
+            setattr(self, f"conv{str(i)}", conv)
             self.convs.append(conv)
-            setattr(self, "conv_bn" + str(i), conv_bn)
+            setattr(self, f"conv_bn{str(i)}", conv_bn)
             self.convs_bn.append(conv_bn)
             last_planes = self.options.dim
 
@@ -74,10 +74,11 @@ class Model_Policy(Model):
             s = conv_bn(self.relu(conv(s)))
 
         output = self.final_conv(s)
-        pis = []
         d = self.board_size * self.board_size
-        for i in range(self.num_future_actions):
-            pis.append(self.softmax(output[:, i].contiguous().view(-1, d)))
+        pis = [
+            self.softmax(output[:, i].contiguous().view(-1, d))
+            for i in range(self.num_future_actions)
+        ]
         return dict(pis=pis, pi=pis[0])
 
 

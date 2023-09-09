@@ -57,8 +57,8 @@ class Model_PolicyValue(Model):
         for i in range(self.options.num_block):
             conv_lower = self._conv_layer()
             conv_upper = self._conv_layer(relu=False)
-            setattr(self, "conv_lower" + str(i), conv_lower)
-            setattr(self, "conv_upper" + str(i), conv_upper)
+            setattr(self, f"conv_lower{str(i)}", conv_lower)
+            setattr(self, f"conv_upper{str(i)}", conv_upper)
 
             self.convs.append((conv_lower, conv_upper))
 
@@ -85,13 +85,9 @@ class Model_PolicyValue(Model):
         if output_channel is None:
             output_channel = self.options.dim
 
-        layers = []
-        layers.append(nn.Conv2d(
-            input_channel,
-            output_channel,
-            kernel,
-            padding=(kernel // 2),
-        ))
+        layers = [
+            nn.Conv2d(input_channel, output_channel, kernel, padding=(kernel // 2))
+        ]
         if self.options.bn:
             layers.append(nn.BatchNorm2d(output_channel))
         if relu:

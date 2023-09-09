@@ -61,13 +61,9 @@ class Block(Model):
         if output_channel is None:
             output_channel = self.options.dim
 
-        layers = []
-        layers.append(nn.Conv2d(
-            input_channel,
-            output_channel,
-            kernel,
-            padding=(kernel // 2),
-        ))
+        layers = [
+            nn.Conv2d(input_channel, output_channel, kernel, padding=(kernel // 2))
+        ]
         if self.options.bn:
             layers.append(
                 nn.BatchNorm2d(output_channel,
@@ -102,8 +98,9 @@ class GoResNet(Model):
     def __init__(self, option_map, params):
         super().__init__(option_map, params)
         self.blocks = []
-        for _ in range(self.options.num_block):
-            self.blocks.append(Block(option_map, params))
+        self.blocks.extend(
+            Block(option_map, params) for _ in range(self.options.num_block)
+        )
         self.resnet = nn.Sequential(*self.blocks)
 
     def forward(self, s):
@@ -222,8 +219,9 @@ class Model_PolicyValue(Model):
             if rank == -1:
                 rank = int(os.environ.get("SLURM_NODEID"))
 
-            print("=> Distributed training: world size: {}, rank: {}, URL: {}".
-                  format(world_size, rank, url))
+            print(
+                f"=> Distributed training: world size: {world_size}, rank: {rank}, URL: {url}"
+            )
 
             dist.init_process_group(backend="nccl",
                                     init_method=url,
@@ -257,13 +255,9 @@ class Model_PolicyValue(Model):
         if output_channel is None:
             output_channel = self.options.dim
 
-        layers = []
-        layers.append(nn.Conv2d(
-            input_channel,
-            output_channel,
-            kernel,
-            padding=(kernel // 2)
-        ))
+        layers = [
+            nn.Conv2d(input_channel, output_channel, kernel, padding=(kernel // 2))
+        ]
         if self.options.bn:
             layers.append(
                 nn.BatchNorm2d(output_channel,

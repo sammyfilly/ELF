@@ -86,7 +86,7 @@ def main():
         GC.GC.getServer().waitForSufficientSelfplay(selfplay_ver)
 
         # Reload old models.
-        real_path = os.path.join(root, "save-" + str(selfplay_ver) + ".bin")
+        real_path = os.path.join(root, f"save-{selfplay_ver}.bin")
         model_loader.options.load = real_path
 
         while True:
